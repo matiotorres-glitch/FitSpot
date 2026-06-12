@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>FitSpot Admin</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    :root { --brand: #D85A30; --brand-light: #FAECE7; --brand-dark: #993C1D; --bg: #ffffff; --bg2: #f8f8f8; --border: #eeeeee; --text: #111111; --text2: #888888; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #1a1a1a; --bg2: #2a2a2a; --border: #333333; --text: #f0f0f0; --text2: #888888; }
+    }
+    body { background: var(--bg); color: var(--text); max-width: 480px; margin: 0 auto; min-height: 100vh; }
+
+    /* LOGIN */
+    .login-page { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 32px 24px; }
+    .login-logo { font-size: 36px; font-weight: 700; color: var(--brand); margin-bottom: 4px; }
+    .login-sub { font-size: 13px; color: var(--text2); margin-bottom: 36px; }
+    .login-box { width: 100%; background: var(--bg2); border-radius: 16px; padding: 24px; }
+    .login-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+    .form-label { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.3px; }
+    .form-input { padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 15px; background: var(--bg); color: var(--text); width: 100%; -webkit-appearance: none; }
+    .form-input:focus { outline: none; border-color: var(--brand); }
+    .btn-primary { background: var(--brand); color: white; border: none; padding: 13px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 4px; }
+    .btn-primary:active { background: var(--brand-dark); }
+    .msg-error { background: #FCEBEB; color: #A32D2D; border-radius: 10px; padding: 11px 14px; font-size: 13px; margin-bottom: 14px; display: none; }
+
+    /* ADMIN APP */
+    #adminApp { display: none; }
+    .hdr { background: #2C2C2A; color: white; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .hdr-left { display: flex; flex-direction: column; }
+    .hdr-logo { font-size: 16px; font-weight: 600; }
+    .hdr-logo span { color: var(--brand); }
+    .hdr-sub { font-size: 11px; opacity: 0.6; margin-top: 1px; }
+    .btn-logout-sm { font-size: 12px; background: rgba(255,255,255,0.1); border: none; color: white; padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+
+    .adm-nav { display: flex; background: var(--bg2); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; position: sticky; top: 53px; z-index: 99; }
+    .adm-nav::-webkit-scrollbar { display: none; }
+    .adm-tab { flex-shrink: 0; padding: 11px 16px; font-size: 13px; cursor: pointer; color: var(--text2); border-bottom: 2px solid transparent; white-space: nowrap; background: none; border-left: none; border-right: none; border-top: none; position: relative; }
+    .adm-tab.active { color: var(--brand); border-bottom-color: var(--brand); font-weight: 600; }
+    .notif-dot { position: absolute; top: 8px; right: 8px; width: 7px; height: 7px; background: var(--brand); border-radius: 50%; }
+
+    .adm-body { padding: 16px 16px 40px; }
+
+    /* STATS */
+    .stats-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-bottom: 20px; }
+    .stat-card { background: var(--bg2); border-radius: 12px; padding: 14px; }
+    .stat-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-val { font-size: 28px; font-weight: 700; color: var(--text); margin-top: 4px; }
+    .stat-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+    .stat-card.alert .stat-val { color: var(--brand); }
+
+    /* GYM LIST */
+    .gym-item { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+    .gym-emoji { width: 38px; height: 38px; background: var(--brand-light); border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+    .gym-info { flex: 1; min-width: 0; }
+    .gym-name { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .gym-meta { font-size: 12px; color: var(--text2); margin-top: 1px; }
+    .gym-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .btn-icon { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 15px; color: var(--text2); }
+    .btn-icon:hover { border-color: var(--brand); color: var(--brand); }
+    .btn-icon.danger:hover { border-color: #E24B4A; color: #E24B4A; }
+
+    /* FORM */
+    .adm-form { display: flex; flex-direction: column; gap: 12px; }
+    .form-row { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+    .form-textarea { resize: vertical; min-height: 70px; }
+    .cat-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+    .cat-toggle { padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); font-size: 12px; cursor: pointer; background: var(--bg); color: var(--text2); }
+    .cat-toggle.selected { background: var(--brand); color: white; border-color: var(--brand); }
+    .emoji-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+    .emoji-opt { width: 38px; height: 38px; border-radius: 9px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; background: var(--bg); }
+    .emoji-opt.selected { border: 2px solid var(--brand); background: var(--brand-light); }
+    .price-list { display: flex; flex-direction: column; gap: 7px; }
+    .price-row-edit { display: flex; gap: 7px; align-items: center; }
+    .price-row-edit input { flex: 1; }
+    .btn-del-price { width: 30px; height: 30px; border-radius: 7px; border: 1px solid #F09595; background: #FCEBEB; color: #A32D2D; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .btn-add-small { display: flex; align-items: center; gap: 4px; font-size: 12px; padding: 5px 12px; border-radius: 8px; border: 1px solid var(--brand); color: var(--brand); background: var(--brand-light); cursor: pointer; width: fit-content; }
+
+    /* REQUESTS */
+    .req-card { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+    .req-card.highlight { border-color: #F0997B; }
+    .req-type { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 3px 9px; border-radius: 5px; font-weight: 600; margin-bottom: 8px; }
+    .type-new { background: #E6F1FB; color: #185FA5; }
+    .type-change { background: #FAEEDA; color: #854F0B; }
+    .req-name { font-size: 15px; font-weight: 600; color: var(--text); }
+    .req-meta { font-size: 12px; color: var(--text2); margin-top: 3px; line-height: 1.5; }
+    .change-diff { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 9px 12px; background: var(--bg2); border-radius: 10px; flex-wrap: wrap; }
+    .diff-old { font-size: 13px; color: var(--text2); text-decoration: line-through; }
+    .diff-new { font-size: 13px; font-weight: 600; color: var(--text); }
+    .req-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .btn-approve { flex: 1; background: #EAF3DE; color: #3B6D11; border: none; padding: 9px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .btn-reject  { flex: 1; background: #FCEBEB; color: #A32D2D;  border: none; padding: 9px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .status-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; padding: 3px 9px; border-radius: 5px; font-weight: 600; }
+    .s-pending  { background: #FAEEDA; color: #854F0B; }
+    .s-approved { background: #EAF3DE; color: #3B6D11; }
+    .s-rejected { background: #FCEBEB; color: #A32D2D; }
+    .req-date { font-size: 11px; color: var(--text2); margin-top: 6px; }
+
+    .filter-row { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+    .filter-row::-webkit-scrollbar { display: none; }
+    .filter-chip { flex-shrink: 0; padding: 5px 13px; border-radius: 20px; border: 1px solid var(--border); font-size: 12px; cursor: pointer; background: var(--bg); color: var(--text2); }
+    .filter-chip.active { background: var(--brand); color: white; border-color: var(--brand); font-weight: 600; }
+
+    /* USERS */
+    .user-item { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+    .user-av { width: 38px; height: 38px; border-radius: 50%; background: var(--brand-light); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: var(--brand-dark); flex-shrink: 0; }
+    .user-info { flex: 1; min-width: 0; }
+    .user-name { font-size: 14px; font-weight: 500; color: var(--text); }
+    .user-meta { font-size: 12px; color: var(--text2); margin-top: 1px; }
+    .level-pill { font-size: 11px; background: var(--brand-light); color: var(--brand-dark); padding: 2px 8px; border-radius: 5px; font-weight: 600; flex-shrink: 0; }
+
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .section-title { font-size: 15px; font-weight: 700; color: var(--text); }
+
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: white; padding: 11px 20px; border-radius: 22px; font-size: 14px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; white-space: nowrap; }
+    .toast.show { opacity: 1; }
+    .loading { text-align: center; padding: 32px; color: var(--text2); font-size: 13px; }
+    .empty { text-align: center; padding: 32px; color: var(--text2); font-size: 13px; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 4px 0 16px; }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginPage">
+  <div class="login-page">
+    <div class="login-logo">FitSpot</div>
+    <div class="login-sub">Panel de administración</div>
+    <div class="login-box">
+      <div class="login-title"><i class="ti ti-lock"></i> Acceso restringido</div>
+      <div class="msg-error" id="loginError">Contraseña incorrecta</div>
+      <div class="form-group">
+        <label class="form-label">Contraseña</label>
+        <input class="form-input" id="adminPass" type="password" placeholder="••••••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn-primary" id="btnAdminLogin">Entrar al panel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN APP -->
+<div id="adminApp">
+  <header class="hdr">
+    <div class="hdr-left">
+      <div class="hdr-logo">FitSpot <span>Admin</span></div>
+      <div class="hdr-sub">Panel de administración</div>
+    </div>
+    <button class="btn-logout-sm" id="btnAdminLogout">Salir</button>
+  </header>
+
+  <div class="adm-nav">
+    <button class="adm-tab active" data-tab="overview">Resumen</button>
+    <button class="adm-tab" data-tab="gyms">Gimnasios</button>
+    <button class="adm-tab" data-tab="add">Añadir</button>
+    <button class="adm-tab" data-tab="requests">Solicitudes <span class="notif-dot" id="notifDot" style="display:none"></span></button>
+    <button class="adm-tab" data-tab="users">Usuarios</button>
+  </div>
+
+  <div class="adm-body">
+
+    <!-- OVERVIEW -->
+    <div id="tab-overview">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Gimnasios</div><div class="stat-val" id="statGyms">—</div><div class="stat-sub">activos</div></div>
+        <div class="stat-card alert"><div class="stat-label">Pendientes</div><div class="stat-val" id="statPending">—</div><div class="stat-sub">requieren atención</div></div>
+        <div class="stat-card"><div class="stat-label">Usuarios</div><div class="stat-val" id="statUsers">—</div><div class="stat-sub">registrados</div></div>
+        <div class="stat-card"><div class="stat-label">Check-ins</div><div class="stat-val" id="statCheckins">—</div><div class="stat-sub">totales</div></div>
+      </div>
+      <div class="section-title" style="margin-bottom:12px">Solicitudes pendientes</div>
+      <div id="recentReqs"><div class="loading">Cargando...</div></div>
+    </div>
+
+    <!-- GYMS -->
+    <div id="tab-gyms" style="display:none">
+      <div class="section-header">
+        <span class="section-title">Gimnasios</span>
+        <button class="btn-add-small" onclick="switchTab('add')"><i class="ti ti-plus"></i> Añadir</button>
+      </div>
+      <div id="gymListAdmin"><div class="loading">Cargando...</div></div>
+    </div>
+
+    <!-- ADD/EDIT -->
+    <div id="tab-add" style="display:none">
+      <div class="section-header">
+        <span class="section-title" id="formTitle">Nuevo gimnasio</span>
+        <button class="btn-add-small" id="cancelEdit" style="display:none;border-color:var(--border);color:var(--text2);background:var(--bg2)" onclick="resetForm()">Cancelar</button>
+      </div>
+      <div class="adm-form">
+        <input type="hidden" id="editId">
+        <div class="form-group"><label class="form-label">Nombre *</label><input class="form-input" id="fName" placeholder="ej. CrossFit Palma"></div>
+        <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input form-textarea" id="fDesc" placeholder="Descripción breve..."></textarea></div>
+        <div class="form-group">
+          <label class="form-label">Emoji</label>
+          <div class="emoji-grid" id="emojiGrid">
+            ${['🏋️','🧘','🤸','⚡','🏊','🎾','🥊','🚴','🏃','🤼'].map(e=>`<div class="emoji-opt" data-emoji="${e}" onclick="selectEmoji(this)">${e}</div>`).join('')}
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Categorías *</label>
+          <div class="cat-grid" id="catGrid">
+            ${['CrossFit','Yoga','Pilates','Hyrox','Natación','Padel','Boxeo','Ciclismo','Running','Funcional'].map(c=>`<div class="cat-toggle" data-cat="${c}" onclick="toggleCat(this)">${c}</div>`).join('')}
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">Dirección</label><input class="form-input" id="fAddr" placeholder="C/ Ejemplo 12, Palma"></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Teléfono</label><input class="form-input" id="fPhone" placeholder="+34 971..."></div>
+          <div class="form-group"><label class="form-label">Horario</label><input class="form-input" id="fHours" placeholder="6:00–22:00"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Web</label><input class="form-input" id="fWeb" placeholder="web.com"></div>
+          <div class="form-group"><label class="form-label">Latitud</label><input class="form-input" id="fLat" type="number" step="any" placeholder="39.5696"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Longitud</label><input class="form-input" id="fLng" type="number" step="any" placeholder="2.6502"></div>
+        <div class="form-group">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <label class="form-label">Precios</label>
+            <button class="btn-add-small" onclick="addPriceRow()"><i class="ti ti-plus"></i> Añadir</button>
+          </div>
+          <div class="price-list" id="priceList">
+            <div class="price-row-edit">
+              <input class="form-input" placeholder="Drop-in" style="flex:1.3">
+              <input class="form-input" placeholder="18€" style="flex:0.7">
+              <button class="btn-del-price" onclick="removePriceRow(this)"><i class="ti ti-x"></i></button>
+            </div>
+          </div>
+        </div>
+        <button class="btn-primary" id="submitBtn" onclick="submitGym()"><i class="ti ti-device-floppy"></i> Guardar gimnasio</button>
+      </div>
+    </div>
+
+    <!-- REQUESTS -->
+    <div id="tab-requests" style="display:none">
+      <div class="filter-row" id="filterRow">
+        <div class="filter-chip active" data-filter="all">Todas</div>
+        <div class="filter-chip" data-filter="pending">Pendientes</div>
+        <div class="filter-chip" data-filter="new_gym">Nuevos</div>
+        <div class="filter-chip" data-filter="change">Cambios</div>
+        <div class="filter-chip" data-filter="approved">Aprobadas</div>
+        <div class="filter-chip" data-filter="rejected">Rechazadas</div>
+      </div>
+      <div id="reqList"><div class="loading">Cargando...</div></div>
+    </div>
+
+    <!-- USERS -->
+    <div id="tab-users" style="display:none">
+      <div class="section-header">
+        <span class="section-title">Usuarios registrados</span>
+      </div>
+      <div id="userList"><div class="loading">Cargando...</div></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toastEl"></div>
+
+<script>
+  // ---- CONTRASEÑA ADMIN (hash SHA-256) ----
+
+  const SUPA_URL = 'https://tdybrmaekzodbfckjift.supabase.co';
+  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkeWJybWFla3pvZGJmY2tqaWZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMDUwODIsImV4cCI6MjA5NjU4MTA4Mn0.PmwSMHvBwtbAEuOk19LG2GVNnKSrgqmGGuBiQ5kqKN0';
+  const { createClient } = supabase;
+  const db = createClient(SUPA_URL, SUPA_KEY);
+
+  let allGyms=[], allPrices=[], gymReqs=[], changeReqs=[], users=[];
+  let selectedEmoji='🏋️', editingId=null, activeFilter='all';
+
+  // ---- AUTH ADMIN ----
+  function checkPass(input) {
+    const correct = [74,36,50,50,40,55,86,102,52,100,122,106];
+    if (input.length !== correct.length) return false;
+    for (let i = 0; i < correct.length; i++) {
+      if (input.charCodeAt(i) !== correct[i]) return false;
+    }
+    return true;
+  }
+
+  function enterAdmin() {
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('adminApp').style.display = '';
+    loadAll();
+  }
+
+  document.getElementById('btnAdminLogin').addEventListener('click', () => {
+    const pass = document.getElementById('adminPass').value;
+    if (checkPass(pass)) {
+      sessionStorage.setItem('fs_admin_ok', '1');
+      enterAdmin();
+    } else {
+      document.getElementById('loginError').style.display = '';
+      document.getElementById('adminPass').value = '';
+    }
+  });
+
+  document.getElementById('adminPass').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('btnAdminLogin').click();
+  });
+
+  document.getElementById('btnAdminLogout').addEventListener('click', () => {
+    sessionStorage.removeItem('fs_admin_ok');
+    document.getElementById('adminApp').style.display = 'none';
+    document.getElementById('loginPage').style.display = '';
+  });
+
+  if (sessionStorage.getItem('fs_admin_ok') === '1') { enterAdmin(); }
+  // ---- UTILS ----
+  function toast(msg, ok=true) {
+    const el = document.getElementById('toastEl');
+    el.textContent = (ok?'✓ ':'✗ ') + msg;
+    el.classList.add('show');
+    setTimeout(()=>el.classList.remove('show'), 3000);
+  }
+
+  function fmtDate(d) {
+    return new Date(d).toLocaleDateString('es-ES',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+  }
+
+  function switchTab(name) {
+    document.querySelectorAll('.adm-tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
+    ['overview','gyms','add','requests','users'].forEach(t=>{
+      document.getElementById('tab-'+t).style.display = t===name?'':'none';
+    });
+    if (name==='gyms') renderGymList();
+    if (name==='requests') renderRequests();
+    if (name==='users') renderUsers();
+  }
+
+  document.querySelector('.adm-nav').addEventListener('click', e=>{
+    const tab = e.target.closest('.adm-tab');
+    if (tab) switchTab(tab.dataset.tab);
+  });
+
+  document.getElementById('filterRow').addEventListener('click', e=>{
+    const chip = e.target.closest('.filter-chip');
+    if (!chip) return;
+    document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    activeFilter = chip.dataset.filter;
+    renderRequests();
+  });
+
+  // ---- FORM ----
+  function selectEmoji(el) {
+    document.querySelectorAll('.emoji-opt').forEach(e=>e.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedEmoji = el.dataset.emoji;
+  }
+  function toggleCat(el) { el.classList.toggle('selected'); }
+  function getSelectedCats() { return [...document.querySelectorAll('.cat-toggle.selected')].map(e=>e.dataset.cat); }
+
+  function addPriceRow(label='', value='') {
+    const row = document.createElement('div');
+    row.className = 'price-row-edit';
+    row.innerHTML = `<input class="form-input" placeholder="Mensual" value="${label}" style="flex:1.3"><input class="form-input" placeholder="80€" value="${value}" style="flex:0.7"><button class="btn-del-price" onclick="removePriceRow(this)"><i class="ti ti-x"></i></button>`;
+    document.getElementById('priceList').appendChild(row);
+  }
+  function removePriceRow(btn) {
+    if (document.getElementById('priceList').children.length > 1) btn.closest('.price-row-edit').remove();
+  }
+  function getPrices() {
+    return [...document.querySelectorAll('#priceList .price-row-edit')].map(r=>{
+      const ins = r.querySelectorAll('input');
+      return { label: ins[0].value.trim(), value: ins[1].value.trim() };
+    }).filter(p=>p.label&&p.value);
+  }
+
+  function resetForm() {
+    editingId = null;
+    ['fName','fDesc','fAddr','fPhone','fHours','fWeb','fLat','fLng'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    document.querySelectorAll('.cat-toggle').forEach(c=>c.classList.remove('selected'));
+    document.querySelectorAll('.emoji-opt').forEach(e=>e.classList.remove('selected'));
+    document.querySelector('.emoji-opt').classList.add('selected');
+    selectedEmoji = '🏋️';
+    document.getElementById('priceList').innerHTML = `<div class="price-row-edit"><input class="form-input" placeholder="Drop-in" style="flex:1.3"><input class="form-input" placeholder="18€" style="flex:0.7"><button class="btn-del-price" onclick="removePriceRow(this)"><i class="ti ti-x"></i></button></div>`;
+    document.getElementById('formTitle').textContent = 'Nuevo gimnasio';
+    document.getElementById('cancelEdit').style.display = 'none';
+    document.getElementById('submitBtn').innerHTML = '<i class="ti ti-device-floppy"></i> Guardar gimnasio';
+  }
+
+  function editGym(id) {
+    const g = allGyms.find(g=>g.id===id);
+    if (!g) return;
+    editingId = id;
+    document.getElementById('fName').value  = g.name || '';
+    document.getElementById('fDesc').value  = g.description || '';
+    document.getElementById('fAddr').value  = g.address || '';
+    document.getElementById('fPhone').value = g.phone || '';
+    document.getElementById('fHours').value = g.open_hours || '';
+    document.getElementById('fWeb').value   = g.website || '';
+    document.getElementById('fLat').value   = g.latitude || '';
+    document.getElementById('fLng').value   = g.longitude || '';
+    document.querySelectorAll('.cat-toggle').forEach(c=>c.classList.toggle('selected',(g.category||[]).includes(c.dataset.cat)));
+    document.querySelectorAll('.emoji-opt').forEach(e=>e.classList.toggle('selected',e.dataset.emoji===g.emoji));
+    selectedEmoji = g.emoji || '🏋️';
+    const gymPrices = allPrices.filter(p=>p.gym_id===id);
+    document.getElementById('priceList').innerHTML = '';
+    gymPrices.length ? gymPrices.forEach(p=>addPriceRow(p.label,p.value)) : addPriceRow();
+    document.getElementById('formTitle').textContent = 'Editar gimnasio';
+    document.getElementById('cancelEdit').style.display = '';
+    document.getElementById('submitBtn').innerHTML = '<i class="ti ti-device-floppy"></i> Actualizar';
+    switchTab('add');
+  }
+
+  async function deleteGym(id) {
+    if (!confirm('¿Eliminar este gimnasio? Esta acción no se puede deshacer.')) return;
+    const { error } = await db.from('gyms').delete().eq('id', id);
+    if (error) { toast('Error al eliminar', false); return; }
+    allGyms = allGyms.filter(g=>g.id!==id);
+    allPrices = allPrices.filter(p=>p.gym_id!==id);
+    toast('Gimnasio eliminado');
+    renderGymList(); updateStats();
+  }
+
+  async function submitGym() {
+    const name = document.getElementById('fName').value.trim();
+    if (!name) { toast('El nombre es obligatorio', false); return; }
+    const cats = getSelectedCats();
+    if (!cats.length) { toast('Selecciona al menos una categoría', false); return; }
+    const gymData = {
+      name, emoji: selectedEmoji, category: cats,
+      description: document.getElementById('fDesc').value.trim() || null,
+      address:     document.getElementById('fAddr').value.trim() || null,
+      phone:       document.getElementById('fPhone').value.trim() || null,
+      open_hours:  document.getElementById('fHours').value.trim() || null,
+      website:     document.getElementById('fWeb').value.trim() || null,
+      latitude:    parseFloat(document.getElementById('fLat').value) || null,
+      longitude:   parseFloat(document.getElementById('fLng').value) || null,
+      is_approved: true
+    };
+    const prices = getPrices();
+    const btn = document.getElementById('submitBtn');
+    btn.textContent = 'Guardando...'; btn.disabled = true;
+    try {
+      let gymId = editingId;
+      if (editingId) {
+        await db.from('gyms').update(gymData).eq('id', editingId);
+        await db.from('prices').delete().eq('gym_id', editingId);
+      } else {
+        const { data } = await db.from('gyms').insert(gymData).select();
+        gymId = data[0]?.id;
+      }
+      if (gymId && prices.length) {
+        await db.from('prices').insert(prices.map(p=>({...p, gym_id: gymId})));
+      }
+      toast(editingId ? 'Gimnasio actualizado ✓' : 'Gimnasio añadido ✓');
+      resetForm();
+      await loadAll();
+      switchTab('gyms');
+    } catch(e) { toast('Error: ' + e.message, false); }
+    btn.innerHTML = '<i class="ti ti-device-floppy"></i> Guardar gimnasio'; btn.disabled = false;
+  }
+
+  // ---- RENDER ----
+  function renderGymList() {
+    const el = document.getElementById('gymListAdmin');
+    if (!allGyms.length) { el.innerHTML = '<div class="empty">No hay gimnasios todavía</div>'; return; }
+    el.innerHTML = allGyms.map(g=>`
+      <div class="gym-item">
+        <div class="gym-emoji">${g.emoji||'🏋️'}</div>
+        <div class="gym-info">
+          <div class="gym-name">${g.name}</div>
+          <div class="gym-meta">${(g.category||[]).join(', ')} · ${g.address?g.address.split(',')[0]:'Sin dirección'}</div>
+        </div>
+        <div class="gym-actions">
+          <button class="btn-icon" onclick="editGym('${g.id}')" title="Editar"><i class="ti ti-edit"></i></button>
+          <button class="btn-icon danger" onclick="deleteGym('${g.id}')" title="Eliminar"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>`).join('');
+  }
+
+  const fieldNames = { name:'Nombre', address:'Dirección', category:'Categorías' };
+
+  function getAllRequests() {
+    const ng = gymReqs.map(r=>({...r, _type:'new_gym'}));
+    const ch = changeReqs.map(r=>({...r, _type:'change'}));
+    return [...ng,...ch].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  }
+
+  function renderRequests() {
+    const el = document.getElementById('reqList');
+    let reqs = getAllRequests();
+    if (activeFilter==='pending')  reqs = reqs.filter(r=>r.status==='pending');
+    if (activeFilter==='approved') reqs = reqs.filter(r=>r.status==='approved');
+    if (activeFilter==='rejected') reqs = reqs.filter(r=>r.status==='rejected');
+    if (activeFilter==='new_gym')  reqs = reqs.filter(r=>r._type==='new_gym');
+    if (activeFilter==='change')   reqs = reqs.filter(r=>r._type==='change');
+    if (!reqs.length) { el.innerHTML = '<div class="empty">No hay solicitudes</div>'; return; }
+    el.innerHTML = reqs.map(r => {
+      const isPending = r.status === 'pending';
+      if (r._type === 'new_gym') {
+        return `<div class="req-card ${isPending?'highlight':''}">
+          <span class="req-type type-new"><i class="ti ti-building"></i> Nuevo gimnasio</span>
+          <div class="req-name">${r.gym_name}</div>
+          <div class="req-meta">${(r.category||[]).join(', ')}${r.address?' · '+r.address:''}</div>
+          ${r.contact_email?`<div class="req-meta"><i class="ti ti-mail" style="font-size:12px"></i> ${r.contact_email}</div>`:''}
+          ${r.description?`<div class="req-meta" style="margin-top:4px;font-style:italic">"${r.description}"</div>`:''}
+          <div style="margin-top:8px"><span class="status-badge ${r.status==='pending'?'s-pending':r.status==='approved'?'s-approved':'s-rejected'}">${r.status==='pending'?'Pendiente':r.status==='approved'?'Aprobado':'Rechazado'}</span></div>
+          <div class="req-date"><i class="ti ti-clock" style="font-size:11px"></i> ${fmtDate(r.created_at)}</div>
+          ${isPending?`<div class="req-actions">
+            <button class="btn-approve" onclick="handleGymReq('${r.id}','approved')"><i class="ti ti-check"></i> Aprobar</button>
+            <button class="btn-reject"  onclick="handleGymReq('${r.id}','rejected')"><i class="ti ti-x"></i> Rechazar</button>
+          </div>`:''}
+        </div>`;
+      } else {
+        const gym = allGyms.find(g=>g.id===r.gym_id);
+        return `<div class="req-card ${isPending?'highlight':''}">
+          <span class="req-type type-change"><i class="ti ti-edit"></i> Cambio restringido</span>
+          <div class="req-name">${gym?gym.name:'Gimnasio'}</div>
+          <div class="req-meta">Campo: <strong>${fieldNames[r.field]||r.field}</strong></div>
+          <div class="change-diff">
+            <span class="diff-old">${r.old_value||'—'}</span>
+            <span style="color:var(--text2)">→</span>
+            <span class="diff-new">${r.new_value}</span>
+          </div>
+          <div style="margin-top:8px"><span class="status-badge ${r.status==='pending'?'s-pending':r.status==='approved'?'s-approved':'s-rejected'}">${r.status==='pending'?'Pendiente':r.status==='approved'?'Aprobado':'Rechazado'}</span></div>
+          <div class="req-date"><i class="ti ti-clock" style="font-size:11px"></i> ${fmtDate(r.created_at)}</div>
+          ${isPending?`<div class="req-actions">
+            <button class="btn-approve" onclick="handleChangeReq('${r.id}','approved','${r.gym_id}','${r.field}',\`${r.new_value}\`)"><i class="ti ti-check"></i> Aprobar</button>
+            <button class="btn-reject"  onclick="handleChangeReq('${r.id}','rejected','${r.gym_id}','${r.field}','')"><i class="ti ti-x"></i> Rechazar</button>
+          </div>`:''}
+        </div>`;
+      }
+    }).join('');
+  }
+
+  async function handleGymReq(id, status) {
+    await db.from('gym_requests').update({ status }).eq('id', id);
+    const req = gymReqs.find(r=>r.id===id);
+    if (req) {
+      req.status = status;
+      if (status === 'approved') {
+        await db.from('gyms').insert({ name:req.gym_name, category:req.category||[], description:req.description, address:req.address, phone:req.phone, website:req.website, emoji:'🏋️', is_approved:true });
+        await loadAll();
+      }
+    }
+    toast(status==='approved' ? 'Aprobado y añadido a FitSpot ✓' : 'Solicitud rechazada');
+    renderRequests(); updateStats();
+  }
+
+  async function handleChangeReq(id, status, gymId, field, newValue) {
+    await db.from('gym_change_requests').update({ status }).eq('id', id);
+    const req = changeReqs.find(r=>r.id===id);
+    if (req) req.status = status;
+    if (status === 'approved' && gymId && field && newValue) {
+      const update = {};
+      if (field === 'category') update.category = newValue.split(',').map(s=>s.trim());
+      else update[field] = newValue;
+      await db.from('gyms').update(update).eq('id', gymId);
+      const gym = allGyms.find(g=>g.id===gymId);
+      if (gym) Object.assign(gym, update);
+    }
+    toast(status==='approved' ? 'Cambio aprobado y aplicado ✓' : 'Cambio rechazado');
+    renderRequests(); updateStats();
+  }
+
+  function renderUsers() {
+    const el = document.getElementById('userList');
+    if (!users.length) { el.innerHTML = '<div class="empty">No hay usuarios todavía</div>'; return; }
+    el.innerHTML = users.map(u => {
+      const initials = (u.full_name||u.username||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      return `<div class="user-item">
+        <div class="user-av">${initials}</div>
+        <div class="user-info">
+          <div class="user-name">${u.full_name||u.username}</div>
+          <div class="user-meta">@${u.username}${u.city?' · '+u.city:''} · ${u.points||0} pts</div>
+        </div>
+        <span class="level-pill">${u.level||'Rookie'}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function updateStats() {
+    document.getElementById('statGyms').textContent = allGyms.length;
+    const pending = [...gymReqs,...changeReqs].filter(r=>r.status==='pending').length;
+    document.getElementById('statPending').textContent = pending;
+    document.getElementById('notifDot').style.display = pending > 0 ? '' : 'none';
+    document.getElementById('statUsers').textContent = users.length;
+
+    const recent = [...gymReqs,...changeReqs].filter(r=>r.status==='pending').slice(0,4);
+    const el = document.getElementById('recentReqs');
+    if (!recent.length) { el.innerHTML = '<div class="empty">No hay solicitudes pendientes 🎉</div>'; return; }
+    el.innerHTML = recent.map(r => {
+      const isNew = !!r.gym_name;
+      const gym = !isNew ? allGyms.find(g=>g.id===r.gym_id) : null;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)">
+        <div style="width:38px;height:38px;border-radius:9px;background:${isNew?'#E6F1FB':'#FAEEDA'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="ti ti-${isNew?'building':'edit'}" style="font-size:17px;color:${isNew?'#185FA5':'#854F0B'}"></i>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${isNew?r.gym_name:(gym?gym.name:'Gimnasio')}</div>
+          <div style="font-size:12px;color:var(--text2)">${isNew?'Nuevo gimnasio':'Cambio: '+(fieldNames[r.field]||r.field)}</div>
+        </div>
+        <span class="status-badge s-pending">Pendiente</span>
+      </div>`;
+    }).join('');
+  }
+
+  async function loadAll() {
+    const [g, p, gr, cr, u, ch] = await Promise.all([
+      db.from('gyms').select('*').order('created_at', {ascending:false}),
+      db.from('prices').select('*'),
+      db.from('gym_requests').select('*').order('created_at', {ascending:false}),
+      db.from('gym_change_requests').select('*').order('created_at', {ascending:false}),
+      db.from('profiles').select('*').order('created_at', {ascending:false}),
+      db.from('checkins').select('id')
+    ]);
+    allGyms    = g.data  || [];
+    allPrices  = p.data  || [];
+    gymReqs    = gr.data || [];
+    changeReqs = cr.data || [];
+    users      = u.data  || [];
+    document.getElementById('statCheckins').textContent = (ch.data||[]).length;
+    updateStats();
+  }
+
+  document.querySelector('.emoji-opt').classList.add('selected');
+</script>
+</body>
+</html>
