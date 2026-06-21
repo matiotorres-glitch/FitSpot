@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>FitSpot — Entrena. Comparte. Conecta.</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+:root{--brand:#D85A30;--brand-light:#FAECE7;--brand-dark:#993C1D;--bg:#fff;--bg2:#f8f8f8;--border:#eee;--text:#111;--text2:#888}
+body{background:var(--bg);color:var(--text);max-width:480px;margin:0 auto;min-height:100vh}
+/* HEADER */
+.hdr{background:var(--brand);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.hdr-logo{font-size:20px;font-weight:600;letter-spacing:-0.5px}
+.hdr-claim{font-size:11px;opacity:.8}
+.hdr-avatar{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.25);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700}
+/* NAV */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--bg);border-top:1px solid var(--border);display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom)}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 4px 6px;cursor:pointer;color:var(--text2);font-size:10px;gap:2px;border:none;background:none}
+.nav-item i{font-size:22px}
+.nav-item.active{color:var(--brand)}
+.page{padding:16px 16px 90px;display:none}
+.page.active{display:block}
+/* AUTH */
+.auth-page{padding:40px 24px 40px}
+.auth-logo{text-align:center;font-size:36px;font-weight:700;color:var(--brand)}
+.auth-claim{text-align:center;font-size:14px;color:var(--text2);margin:4px 0 32px}
+.auth-tabs{display:flex;background:var(--bg2);border-radius:12px;padding:4px;margin-bottom:24px}
+.auth-tab{flex:1;padding:9px;text-align:center;font-size:14px;cursor:pointer;border-radius:9px;color:var(--text2);border:none;background:none}
+.auth-tab.active{background:var(--bg);color:var(--text);font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.fgr{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.flb{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.3px}
+.finp{padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;background:var(--bg);color:var(--text);width:100%;-webkit-appearance:none}
+.finp:focus{outline:none;border-color:var(--brand)}
+.btn{background:var(--brand);color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;width:100%;margin-top:4px}
+.btn:active{background:var(--brand-dark)}
+.btn-ghost{background:none;border:none;color:var(--brand);font-size:14px;cursor:pointer;padding:12px;width:100%;text-align:center}
+.msg-err{background:#FCEBEB;color:#A32D2D;border-radius:10px;padding:11px 14px;font-size:13px;margin-bottom:14px;display:none}
+/* EXPLORE / DIRECTORY */
+.search-bar{margin-bottom:12px;position:relative}
+.search-bar i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text2);font-size:16px}
+.search-input{width:100%;padding:11px 12px 11px 36px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;background:var(--bg2);color:var(--text);-webkit-appearance:none}
+.search-input:focus{outline:none;border-color:var(--brand)}
+.loc-bar{display:flex;align-items:center;gap:8px;background:var(--bg2);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:13px}
+.loc-bar i{color:var(--brand);font-size:16px;flex-shrink:0}
+.loc-bar span{flex:1;color:var(--text2)}
+.loc-bar button{background:none;border:none;color:var(--brand);font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0}
+.loc-input-row{display:none;gap:8px;margin-bottom:12px}
+.loc-input-row.show{display:flex}
+.loc-input-row input{flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;background:var(--bg);color:var(--text)}
+.loc-input-row button{background:var(--brand);color:#fff;border:none;padding:0 16px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer}
+.sort-row{display:flex;gap:8px;margin-bottom:14px}
+.sort-chip{flex:1;text-align:center;padding:8px 6px;border-radius:10px;border:1px solid var(--border);font-size:12px;cursor:pointer;background:var(--bg);color:var(--text2);display:flex;align-items:center;justify-content:center;gap:4px}
+.sort-chip.active{background:var(--brand-light);color:var(--brand-dark);border-color:var(--brand);font-weight:600}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin-bottom:14px;padding-bottom:2px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;padding:6px 14px;border-radius:20px;border:1px solid var(--border);font-size:13px;cursor:pointer;background:var(--bg);color:var(--text2)}
+.chip.active{background:var(--brand);color:#fff;border-color:var(--brand);font-weight:600}
+.gym-list{display:flex;flex-direction:column;gap:14px}
+.gym-card{background:var(--bg);border:1px solid var(--border);border-radius:16px;overflow:hidden;cursor:pointer}
+.gym-card-img{width:100%;height:140px;object-fit:cover;background:var(--bg2);display:block}
+.gym-card-img-empty{width:100%;height:140px;background:var(--brand-light);display:flex;align-items:center;justify-content:center;font-size:40px}
+.gym-card-body{padding:12px 14px 14px}
+.gym-card-toprow{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.gym-card-name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.gym-card-price{font-size:14px;font-weight:700;color:var(--brand);flex-shrink:0}
+.gym-card-rating{display:flex;align-items:center;gap:4px;margin-top:5px}
+.gym-card-dist{font-size:11px;color:var(--text2);margin-left:4px}
+.gym-card-cats{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.cat-badge{font-size:11px;padding:2px 8px;border-radius:4px;background:var(--brand-light);color:var(--brand-dark);font-weight:600}
+/* DETAIL VIEW */
+.detail-overlay{position:fixed;inset:0;background:var(--bg);z-index:200;display:none;overflow-y:auto;max-width:480px;margin:0 auto}
+.detail-overlay.open{display:block}
+.detail-hdr{background:var(--brand);padding:14px 16px;display:flex;align-items:center;gap:12px;color:#fff;position:sticky;top:0}
+.detail-back{background:rgba(255,255,255,.2);border:none;color:#fff;width:34px;height:34px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px}
+.detail-title{font-size:16px;font-weight:600}
+.detail-body{padding:18px 16px 40px}
+.detail-emoji-row{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.detail-emoji-big{width:60px;height:60px;background:var(--brand-light);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:30px}
+.detail-desc{font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:16px}
+.detail-sec{margin-bottom:18px}
+.detail-sec-title{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.detail-row{display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:9px}
+.detail-row i{color:var(--brand);font-size:16px;width:18px}
+.prices-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.price-card{background:var(--bg2);border-radius:10px;padding:10px 12px;text-align:center}
+.price-card-label{font-size:12px;color:var(--text2)}
+.price-card-value{font-size:18px;font-weight:700;color:var(--brand);margin-top:2px}
+.detail-checkin-btn{background:var(--brand);color:#fff;border:none;padding:13px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;width:100%;margin-top:8px}
+.contact-row{display:flex;gap:10px;margin-top:8px}
+.contact-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:13px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--bg);color:var(--text);text-decoration:none}
+.contact-btn.call{border-color:var(--brand);color:var(--brand)}
+/* PROFILE */
+.profile-hero{background:linear-gradient(135deg,var(--brand),var(--brand-dark));padding:28px 16px 22px;color:#fff;text-align:center;margin:-16px -16px 0}
+.profile-av-big{width:76px;height:76px;border-radius:50%;background:rgba(255,255,255,.25);border:3px solid rgba(255,255,255,.5);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:700}
+.profile-name{font-size:21px;font-weight:700}
+.profile-handle{font-size:13px;opacity:.8;margin-top:2px}
+.profile-bio{font-size:13px;opacity:.85;margin-top:6px}
+.level-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.2);padding:5px 16px;border-radius:20px;font-size:13px;font-weight:600;margin-top:12px}
+.prog-sec{padding:14px 16px 0}
+.prog-lbl{display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px}
+.prog-bar{height:7px;background:var(--border);border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;background:var(--brand);border-radius:4px;transition:width .6s ease}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);background:var(--border);gap:1px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin:14px -16px 0}
+.stat-cell{background:var(--bg);padding:14px 8px;text-align:center}
+.stat-num{font-size:22px;font-weight:700;color:var(--text)}
+.stat-lbl{font-size:11px;color:var(--text2);margin-top:2px}
+.card{background:var(--bg2);border-radius:14px;padding:14px;margin-top:14px}
+.card-title{font-size:14px;font-weight:600;margin-bottom:10px}
+.pts-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)}
+.pts-row:last-child{border-bottom:none}
+.pts-action{display:flex;align-items:center;gap:8px;font-size:13px}
+.pts-val{font-size:13px;font-weight:600;color:var(--brand)}
+/* FEED */
+.feed-card{background:var(--bg);border:1px solid var(--border);border-radius:14px;margin-bottom:14px;overflow:hidden}
+.feed-hdr{display:flex;align-items:center;gap:10px;padding:12px 14px}
+.feed-av{width:38px;height:38px;border-radius:50%;background:var(--brand-light);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--brand-dark);flex-shrink:0}
+.feed-uname{font-size:14px;font-weight:600}
+.feed-meta{font-size:12px;color:var(--text2)}
+.feed-lvl{font-size:11px;background:var(--brand-light);color:var(--brand-dark);padding:2px 8px;border-radius:5px;font-weight:600}
+.feed-img{width:100%;aspect-ratio:4/3;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:56px;object-fit:cover}
+.feed-actions{display:flex;gap:16px;padding:10px 14px 6px}
+.act-btn{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--text2);cursor:pointer;border:none;background:none}
+.act-btn.liked{color:#E24B4A}
+.feed-caption{padding:2px 14px 14px;font-size:13px;line-height:1.5}
+/* CHECKIN */
+.checkin-box{background:var(--brand-light);border-radius:14px;padding:16px;margin-bottom:16px}
+.checkin-title{font-size:14px;font-weight:600;color:var(--brand-dark);margin-bottom:10px}
+.fsel{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;background:var(--bg);color:var(--text);margin-bottom:10px;-webkit-appearance:none}
+.photo-upload{margin-bottom:10px}
+.photo-preview{width:100%;border-radius:12px;margin-bottom:8px;display:none;max-height:200px;object-fit:cover}
+.photo-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--bg);border:1.5px dashed var(--brand);border-radius:12px;padding:14px;cursor:pointer;color:var(--brand-dark);font-size:14px;font-weight:500;margin-bottom:10px}
+.btn-checkin{background:var(--brand);color:#fff;border:none;padding:13px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;width:100%}
+/* MAP */
+.map-box{background:#e8f5e8;border-radius:14px;margin-bottom:16px;overflow:hidden;position:relative;height:240px}
+#leafletMap{width:100%;height:100%;z-index:1}
+.map-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:#e8f5e8;z-index:2}
+.map-empty span{font-size:32px}
+.map-empty p{font-size:13px;color:var(--text2)}
+.gym-pin-emoji{font-size:26px;text-align:center;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.3))}
+.leaflet-popup-content{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px}
+.leaflet-popup-content b{font-size:14px}
+/* HISTORY */
+.hist-item{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}
+.hist-emoji{width:38px;height:38px;background:var(--brand-light);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.hist-name{font-size:14px;font-weight:500}
+.hist-note{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hist-date{font-size:11px;color:var(--text2);flex-shrink:0}
+/* PROFILE EDIT (merged into profile page) */
+.edit-sec{margin-top:20px}
+.edit-title{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px}
+.btn-logout{background:#FCEBEB;color:#A32D2D;border:none;padding:13px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;width:100%;margin-top:10px}
+.section-title{font-size:16px;font-weight:700;margin-bottom:14px}
+.loading{text-align:center;padding:40px 16px;color:var(--text2);font-size:14px}
+.empty-state{text-align:center;padding:40px 16px;color:var(--text2);font-size:14px}
+.divider{border:none;border-top:1px solid var(--border);margin:16px 0}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:11px 20px;border-radius:22px;font-size:14px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;white-space:nowrap;backdrop-filter:blur(8px)}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header class="hdr">
+    <div>
+      <div class="hdr-logo">FitSpot</div>
+      <div class="hdr-claim">Entrena. Comparte. Conecta.</div>
+    </div>
+    <button class="hdr-avatar" id="avatarBtn"><i class="ti ti-user"></i></button>
+  </header>
+
+  <div id="authWrap" style="display:none">
+    <div class="auth-page">
+      <div class="auth-logo">FitSpot</div>
+      <div class="auth-claim">Entrena. Comparte. Conecta.</div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabLogin" onclick="switchAuth('login')">Iniciar sesión</button>
+        <button class="auth-tab" id="tabReg" onclick="switchAuth('register')">Registrarse</button>
+      </div>
+      <div class="msg-err" id="authErr"></div>
+
+      <div id="loginForm">
+        <div class="fgr"><label class="flb">Email</label><input class="finp" id="loginEmail" type="email" placeholder="tu@email.com" autocomplete="email"></div>
+        <div class="fgr"><label class="flb">Contraseña</label><input class="finp" id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+        <button class="btn" id="btnLogin">Entrar</button>
+        <button class="btn-ghost" onclick="switchAuth('register')">¿No tienes cuenta? Regístrate</button>
+      </div>
+
+      <div id="registerForm" style="display:none">
+        <div class="fgr"><label class="flb">Nombre completo</label><input class="finp" id="regName" type="text" placeholder="Tu nombre" autocomplete="name"></div>
+        <div class="fgr"><label class="flb">Email</label><input class="finp" id="regEmail" type="email" placeholder="tu@email.com" autocomplete="email"></div>
+        <div class="fgr"><label class="flb">Contraseña</label><input class="finp" id="regPass" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></div>
+        <button class="btn" id="btnRegister">Crear cuenta</button>
+        <button class="btn-ghost" onclick="switchAuth('login')">¿Ya tienes cuenta? Inicia sesión</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPLORAR: directorio real de gimnasios -->
+  <div id="page-explore" class="page active">
+    <div class="loc-bar" id="locBar">
+      <i class="ti ti-map-pin"></i>
+      <span id="locText">Detectando tu ubicación...</span>
+      <button onclick="toggleLocInput()">Cambiar</button>
+    </div>
+    <div class="loc-input-row" id="locInputRow">
+      <input type="text" id="locManualInput" placeholder="Escribe tu ciudad o zona...">
+      <button onclick="setManualLocation()">Buscar</button>
+    </div>
+    <div class="search-bar">
+      <i class="ti ti-search"></i>
+      <input class="search-input" id="exploreSearch" placeholder="Buscar gimnasio...">
+    </div>
+    <div class="sort-row" id="sortRow">
+      <div class="sort-chip active" data-sort="distance"><i class="ti ti-map-pin" style="font-size:13px"></i> Cercanos</div>
+      <div class="sort-chip" data-sort="price"><i class="ti ti-coin" style="font-size:13px"></i> Precio</div>
+      <div class="sort-chip" data-sort="rating"><i class="ti ti-star" style="font-size:13px"></i> Valoración</div>
+    </div>
+    <div class="chips" id="exploreChips">
+      <div class="chip active" data-cat="all">Todos</div>
+      <div class="chip" data-cat="CrossFit">CrossFit</div>
+      <div class="chip" data-cat="Yoga">Yoga</div>
+      <div class="chip" data-cat="Pilates">Pilates</div>
+      <div class="chip" data-cat="Hyrox">Hyrox</div>
+      <div class="chip" data-cat="Natación">Natación</div>
+      <div class="chip" data-cat="Padel">Padel</div>
+    </div>
+    <div class="gym-list" id="exploreList"><div class="loading">Cargando gimnasios...</div></div>
+  </div>
+
+  <!-- COMUNIDAD: feed social -->
+  <div id="page-community" class="page">
+    <div class="section-title">Actividad de la comunidad 🔥</div>
+    <div id="feedList"><div class="loading">Cargando...</div></div>
+  </div>
+
+  <div id="page-checkin" class="page">
+    <div class="section-title">Hacer Check-in 📍</div>
+    <div class="checkin-box">
+      <div class="checkin-title">¿Dónde has entrenado hoy?</div>
+      <select class="fsel" id="checkinGym"><option value="">Selecciona un gimnasio...</option></select>
+      <div class="photo-upload">
+        <img class="photo-preview" id="photoPreview">
+        <label class="photo-btn" for="photoInput"><i class="ti ti-camera"></i> <span id="photoLabel">Añadir foto (opcional, +15 pts)</span></label>
+        <input type="file" id="photoInput" accept="image/*" style="display:none">
+      </div>
+      <input class="finp" id="checkinNote" type="text" placeholder="Nota opcional (ej. PR en sentadilla 🏋️)" style="margin-bottom:10px">
+      <button class="btn-checkin" id="btnCheckin">📍 Registrar check-in · +20 pts</button>
+    </div>
+    <div class="section-title">Mi mapa de entrenos</div>
+    <div class="map-box">
+      <div id="leafletMap"></div>
+      <div class="map-empty" id="mapEmpty"><span>🗺️</span><p>Tus check-ins aparecerán aquí</p></div>
+    </div>
+    <div id="checkinHistory"></div>
+  </div>
+
+  <!-- PERFIL: vista + edición fusionadas -->
+  <div id="page-profile" class="page">
+    <div id="profileContent"><div class="loading">Cargando...</div></div>
+    <div class="edit-sec">
+      <div class="edit-title">Editar perfil</div>
+      <div class="fgr"><label class="flb">Nombre completo</label><input class="finp" id="editName" type="text" autocomplete="name"></div>
+      <div class="fgr"><label class="flb">Usuario</label><input class="finp" id="editUsername" type="text" placeholder="@usuario"></div>
+      <div class="fgr"><label class="flb">Ciudad</label><input class="finp" id="editCity" type="text" placeholder="Palma, Mallorca"></div>
+      <div class="fgr"><label class="flb">Bio</label><input class="finp" id="editBio" type="text" placeholder="CrossFitter desde 2019 🏋️"></div>
+      <button class="btn" id="btnSaveProfile">💾 Guardar perfil</button>
+    </div>
+    <button class="btn-logout" id="btnLogout">Cerrar sesión</button>
+  </div>
+
+  <nav class="bottom-nav" id="bottomNav" style="display:none">
+    <button class="nav-item active" data-page="explore"><i class="ti ti-compass"></i><span>Explorar</span></button>
+    <button class="nav-item" data-page="community"><i class="ti ti-users"></i><span>Comunidad</span></button>
+    <button class="nav-item" data-page="checkin"><i class="ti ti-map-pin"></i><span>Check-in</span></button>
+    <button class="nav-item" data-page="profile"><i class="ti ti-user"></i><span>Perfil</span></button>
+  </nav>
+</div>
+
+<!-- DETALLE DE GIMNASIO -->
+<div class="detail-overlay" id="detailOverlay">
+  <div class="detail-hdr">
+    <button class="detail-back" onclick="closeDetail()"><i class="ti ti-arrow-left"></i></button>
+    <span class="detail-title" id="detailTitle">Gimnasio</span>
+  </div>
+  <div class="detail-body" id="detailBody"></div>
+</div>
+
+<div class="toast" id="toastEl"></div>
+
+<script>
+var SURL='https://tdybrmaekzodbfckjift.supabase.co';
+var SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkeWJybWFla3pvZGJmY2tqaWZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMDUwODIsImV4cCI6MjA5NjU4MTA4Mn0.PmwSMHvBwtbAEuOk19LG2GVNnKSrgqmGGuBiQ5kqKN0';
+var db=supabase.createClient(SURL,SKEY);
+
+var currentUser=null,profile=null,gyms=[],allPrices=[],myCheckins=[],likedPhotos=[],feedPhotos=[];
+var selectedPhotoFile=null;
+var exploreFilter='all';
+var exploreSort='distance';
+var userLat=null,userLng=null,userLocLabel=null;
+
+var LEVELS=[
+  {name:'Rookie',icon:'🌱',min:0,max:100},
+  {name:'Athlete',icon:'⚡',min:100,max:300},
+  {name:'Pro',icon:'🔥',min:300,max:600},
+  {name:'Elite',icon:'💎',min:600,max:1000},
+  {name:'Legend',icon:'👑',min:1000,max:99999}
+];
+var POINTS_INFO=[
+  {action:'Check-in en un gimnasio',pts:20,icon:'📍'},
+  {action:'Subir una foto',pts:15,icon:'📸'},
+  {action:'Dejar una reseña',pts:25,icon:'⭐'},
+  {action:'Recibir un like',pts:5,icon:'❤️'},
+  {action:'Completar perfil',pts:50,icon:'✅'}
+];
+
+function getLevel(pts){var r=LEVELS.slice().reverse();for(var i=0;i<r.length;i++)if(pts>=r[i].min)return r[i];return LEVELS[0];}
+function getNext(pts){for(var i=0;i<LEVELS.length;i++)if(pts<LEVELS[i].max)return LEVELS[i];return LEVELS[LEVELS.length-1];}
+
+function toast(msg,ok){
+  var el=document.getElementById('toastEl');
+  el.textContent=(ok!==false?'✓ ':'✗ ')+msg;
+  el.classList.add('show');
+  setTimeout(function(){el.classList.remove('show');},3000);
+}
+
+function showErr(msg){
+  var e=document.getElementById('authErr');
+  e.textContent=msg;e.style.display='block';
+}
+
+function switchAuth(mode){
+  document.getElementById('tabLogin').classList.toggle('active',mode==='login');
+  document.getElementById('tabReg').classList.toggle('active',mode==='register');
+  document.getElementById('loginForm').style.display=mode==='login'?'':'none';
+  document.getElementById('registerForm').style.display=mode==='register'?'':'none';
+  document.getElementById('authErr').style.display='none';
+}
+
+function showAuth(){
+  document.getElementById('authWrap').style.display='';
+  document.getElementById('bottomNav').style.display='none';
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  document.getElementById('avatarBtn').onclick=function(){showAuth();};
+  loadExplore();
+}
+
+function showApp(){
+  document.getElementById('authWrap').style.display='none';
+  document.getElementById('bottomNav').style.display='flex';
+  document.getElementById('avatarBtn').onclick=function(){showPage('profile');};
+  updateAvatarBtn();
+  showPage('explore');
+}
+
+function updateAvatarBtn(){
+  var btn=document.getElementById('avatarBtn');
+  if(profile&&profile.full_name){
+    var initials=profile.full_name.split(' ').map(function(w){return w[0];}).join('').toUpperCase().slice(0,2);
+    btn.textContent=initials;
+  }
+}
+
+function showPage(name){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function(n){n.classList.toggle('active',n.dataset.page===name);});
+  if(name==='profile'){renderProfile();loadSettings();}
+  if(name==='checkin')initCheckin();
+  if(name==='community')loadFeed();
+  if(name==='explore')loadExplore();
+}
+
+document.getElementById('bottomNav').addEventListener('click',function(e){
+  var btn=e.target.closest('.nav-item');
+  if(btn)showPage(btn.dataset.page);
+});
+
+document.getElementById('btnLogin').addEventListener('click',function(){
+  var email=document.getElementById('loginEmail').value.trim();
+  var pass=document.getElementById('loginPass').value;
+  if(!email||!pass){showErr('Rellena todos los campos');return;}
+  var btn=document.getElementById('btnLogin');
+  btn.textContent='Entrando...';btn.disabled=true;
+  db.auth.signInWithPassword({email:email,password:pass}).then(function(r){
+    btn.textContent='Entrar';btn.disabled=false;
+    if(r.error){showErr(r.error.message);return;}
+    currentUser=r.data.user;
+    loadProfile().then(function(){showApp();toast('¡Bienvenido de nuevo! 👋');});
+  });
+});
+
+document.getElementById('btnRegister').addEventListener('click',function(){
+  var name=document.getElementById('regName').value.trim();
+  var email=document.getElementById('regEmail').value.trim();
+  var pass=document.getElementById('regPass').value;
+  if(!name||!email||!pass){showErr('Rellena todos los campos');return;}
+  if(pass.length<6){showErr('La contraseña debe tener al menos 6 caracteres');return;}
+  var btn=document.getElementById('btnRegister');
+  btn.textContent='Creando cuenta...';btn.disabled=true;
+  db.auth.signUp({email:email,password:pass,options:{data:{full_name:name}}}).then(function(r){
+    btn.textContent='Crear cuenta';btn.disabled=false;
+    if(r.error){showErr(r.error.message);return;}
+    currentUser=r.data.user;
+    setTimeout(function(){
+      loadProfile().then(function(){showApp();toast('¡Bienvenido a FitSpot! 🎉');});
+    },1000);
+  });
+});
+
+document.getElementById('btnLogout').addEventListener('click',function(){
+  db.auth.signOut().then(function(){
+    currentUser=null;profile=null;
+    showAuth();
+    toast('Sesión cerrada');
+  });
+});
+
+function loadProfile(){
+  if(!currentUser)return Promise.resolve();
+  return db.from('profiles').select('*').eq('id',currentUser.id).single().then(function(r){
+    profile=r.data;
+  });
+}
+
+function addPoints(pts){
+  if(!profile)return Promise.resolve();
+  var newPts=(profile.points||0)+pts;
+  var newLevel=getLevel(newPts).name;
+  return db.from('profiles').update({points:newPts,level:newLevel}).eq('id',currentUser.id).then(function(){
+    profile.points=newPts;
+    profile.level=newLevel;
+  });
+}
+
+// ===== EXPLORAR: DIRECTORIO REAL =====
+function ensureGymsLoaded(){
+  if(gyms.length)return Promise.resolve();
+  return Promise.all([
+    db.from('gyms').select('*').eq('is_approved',true).order('name'),
+    db.from('prices').select('*')
+  ]).then(function(res){
+    gyms=res[0].data||[];
+    allPrices=res[1].data||[];
+  });
+}
+
+function loadExplore(){
+  ensureGymsLoaded().then(function(){
+    if(userLat===null && userLocLabel===null){
+      requestGeolocation();
+    } else {
+      renderExploreList();
+    }
+    var sel=document.getElementById('checkinGym');
+    if(sel&&!sel.options.length>1){
+      sel.innerHTML='<option value="">Selecciona un gimnasio...</option>'+gyms.map(function(g){return '<option value="'+g.id+'">'+(g.emoji||'🏋️')+' '+g.name+'</option>';}).join('');
+    }
+  });
+}
+
+function requestGeolocation(){
+  var locText=document.getElementById('locText');
+  if(!navigator.geolocation){
+    locText.textContent='Geolocalización no disponible';
+    toggleLocInput();
+    return;
+  }
+  locText.textContent='Detectando tu ubicación...';
+  navigator.geolocation.getCurrentPosition(function(pos){
+    userLat=pos.coords.latitude;
+    userLng=pos.coords.longitude;
+    userLocLabel=null;
+    locText.textContent='Cerca de tu ubicación actual';
+    renderExploreList();
+  },function(){
+    locText.textContent='Activa tu ubicación o escríbela manualmente';
+    toggleLocInput();
+  },{timeout:8000});
+}
+
+function toggleLocInput(){
+  document.getElementById('locInputRow').classList.toggle('show');
+}
+
+function setManualLocation(){
+  var val=document.getElementById('locManualInput').value.trim();
+  if(!val){toast('Escribe una ciudad o zona',false);return;}
+  userLocLabel=val;
+  userLat=null;userLng=null;
+  document.getElementById('locText').textContent=val;
+  document.getElementById('locInputRow').classList.remove('show');
+  exploreSort='rating';
+  document.querySelectorAll('.sort-chip').forEach(function(c){c.classList.toggle('active',c.dataset.sort==='rating');});
+  renderExploreList();
+}
+
+function distanceKm(lat1,lng1,lat2,lng2){
+  var R=6371;
+  var dLat=(lat2-lat1)*Math.PI/180;
+  var dLng=(lng2-lng1)*Math.PI/180;
+  var a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
+  var c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  return R*c;
+}
+
+function renderStars(n){
+  var full=Math.round(n);
+  var s='';
+  for(var i=0;i<5;i++)s+=i<full?'★':'☆';
+  return s;
+}
+
+function seedRating(id){
+  var hash=0;
+  for(var i=0;i<id.length;i++)hash=((hash<<5)-hash)+id.charCodeAt(i);
+  var r=3.8+(Math.abs(hash)%12)/10;
+  var reviews=12+Math.abs(hash>>4)%88;
+  return {rating:r.toFixed(1),reviews:reviews};
+}
+
+function lowestPrice(gymId){
+  var gymPrices=allPrices.filter(function(p){return p.gym_id===gymId;});
+  if(!gymPrices.length)return null;
+  var nums=gymPrices.map(function(p){
+    var n=parseFloat((p.value||'').replace(',','.').replace(/[^0-9.]/g,''));
+    return isNaN(n)?null:n;
+  }).filter(function(n){return n!==null;});
+  if(!nums.length)return null;
+  return Math.min.apply(null,nums);
+}
+
+function renderExploreList(){
+  var q=document.getElementById('exploreSearch').value.toLowerCase();
+  var list=gyms.slice();
+  if(exploreFilter!=='all')list=list.filter(function(g){return (g.category||[]).indexOf(exploreFilter)>-1;});
+  if(q)list=list.filter(function(g){return g.name.toLowerCase().indexOf(q)>-1||(g.address||'').toLowerCase().indexOf(q)>-1;});
+
+  list=list.map(function(g){
+    var sr=seedRating(g.id);
+    var price=lowestPrice(g.id);
+    var dist=null;
+    if(userLat!==null&&g.latitude&&g.longitude){
+      dist=distanceKm(userLat,userLng,g.latitude,g.longitude);
+    }
+    return {gym:g,rating:parseFloat(sr.rating),reviews:sr.reviews,price:price,dist:dist};
+  });
+
+  if(exploreSort==='distance'&&userLat!==null){
+    list.sort(function(a,b){
+      if(a.dist===null)return 1;
+      if(b.dist===null)return -1;
+      return a.dist-b.dist;
+    });
+  } else if(exploreSort==='price'){
+    list.sort(function(a,b){
+      if(a.price===null)return 1;
+      if(b.price===null)return -1;
+      return a.price-b.price;
+    });
+  } else if(exploreSort==='rating'){
+    list.sort(function(a,b){return b.rating-a.rating;});
+  }
+
+  var el=document.getElementById('exploreList');
+  if(!list.length){el.innerHTML='<div class="empty-state">No se encontraron gimnasios</div>';return;}
+  el.innerHTML=list.map(function(item){
+    var g=item.gym;
+    var imgHtml=g.cover_image?
+      '<img class="gym-card-img" src="'+g.cover_image+'" loading="lazy">':
+      '<div class="gym-card-img-empty">'+(g.emoji||'🏋️')+'</div>';
+    var distHtml=item.dist!==null?'<span class="gym-card-dist">· '+item.dist.toFixed(1)+' km</span>':'';
+    return '<div class="gym-card" onclick="openDetail(\''+g.id+'\')">'+
+      imgHtml+
+      '<div class="gym-card-body">'+
+        '<div class="gym-card-toprow">'+
+          '<div class="gym-card-name">'+g.name+'</div>'+
+          '<div class="gym-card-price">'+(item.price!==null?item.price+'€':'')+'</div>'+
+        '</div>'+
+        '<div class="gym-card-rating">'+
+          '<span style="color:#F59E0B;font-size:13px">'+renderStars(item.rating)+'</span>'+
+          '<span style="font-size:12px;color:var(--text2)">'+item.rating.toFixed(1)+' ('+item.reviews+')</span>'+
+          distHtml+
+        '</div>'+
+        '<div class="gym-card-cats">'+(g.category||[]).map(function(c){return '<span class="cat-badge">'+c+'</span>';}).join('')+'</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+document.getElementById('exploreSearch').addEventListener('input',renderExploreList);
+document.getElementById('exploreChips').addEventListener('click',function(e){
+  var chip=e.target.closest('.chip');
+  if(!chip)return;
+  document.querySelectorAll('#exploreChips .chip').forEach(function(c){c.classList.remove('active');});
+  chip.classList.add('active');
+  exploreFilter=chip.dataset.cat;
+  renderExploreList();
+});
+document.getElementById('sortRow').addEventListener('click',function(e){
+  var chip=e.target.closest('.sort-chip');
+  if(!chip)return;
+  if(chip.dataset.sort==='distance'&&userLat===null){
+    toast('Activa tu ubicación para ordenar por cercanía',false);
+    return;
+  }
+  document.querySelectorAll('.sort-chip').forEach(function(c){c.classList.remove('active');});
+  chip.classList.add('active');
+  exploreSort=chip.dataset.sort;
+  renderExploreList();
+});
+
+function openDetail(gymId){
+  var g=gyms.find(function(x){return x.id===gymId;});
+  if(!g)return;
+  var gymPrices=allPrices.filter(function(p){return p.gym_id===gymId;});
+  var sr=seedRating(g.id);
+
+  document.getElementById('detailTitle').textContent=g.name;
+  document.getElementById('detailBody').innerHTML=
+    '<div class="detail-emoji-row">'+
+      '<div class="detail-emoji-big">'+(g.emoji||'🏋️')+'</div>'+
+      '<div>'+
+        '<div style="font-size:17px;font-weight:700">'+g.name+'</div>'+
+        '<div style="font-size:13px;color:var(--text2);margin-top:2px">'+(g.category||[]).join(' · ')+'</div>'+
+        '<div style="display:flex;align-items:center;gap:4px;margin-top:4px">'+
+          '<span style="color:#F59E0B;font-size:14px">'+renderStars(parseFloat(sr.rating))+'</span>'+
+          '<span style="font-size:13px;color:var(--text2)">'+sr.rating+' ('+sr.reviews+' reseñas)</span>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    (g.description?'<p class="detail-desc">'+g.description+'</p>':'')+
+    '<div class="detail-sec"><div class="detail-sec-title">Información</div>'+
+      (g.address?'<div class="detail-row"><i class="ti ti-map-pin"></i>'+g.address+'</div>':'')+
+      (g.open_hours?'<div class="detail-row"><i class="ti ti-clock"></i>'+g.open_hours+'</div>':'')+
+      (g.phone?'<div class="detail-row"><i class="ti ti-phone"></i>'+g.phone+'</div>':'')+
+      (g.website?'<div class="detail-row"><i class="ti ti-world"></i><a href="https://'+g.website+'" style="color:var(--brand)">'+g.website+'</a></div>':'')+
+    '</div>'+
+    (gymPrices.length?'<div class="detail-sec"><div class="detail-sec-title">Precios</div><div class="prices-grid">'+
+      gymPrices.map(function(p){return '<div class="price-card"><div class="price-card-label">'+p.label+'</div><div class="price-card-value">'+p.value+'</div></div>';}).join('')+
+    '</div></div>':'')+
+    ((g.phone||g.website)?'<div class="contact-row">'+
+      (g.phone?'<a class="contact-btn call" href="tel:'+g.phone.replace(/\s/g,'')+'"><i class="ti ti-phone"></i> Llamar</a>':'')+
+      (g.website?'<a class="contact-btn" href="https://'+g.website+'" target="_blank" rel="noopener"><i class="ti ti-calendar-event"></i> Reservar / Más info</a>':'')+
+    '</div>':'')+
+    '<button class="detail-checkin-btn" onclick="goCheckinFor(\''+g.id+'\')"><i class="ti ti-map-pin"></i> Hacer check-in aquí</button>';
+
+  document.getElementById('detailOverlay').classList.add('open');
+}
+
+function closeDetail(){
+  document.getElementById('detailOverlay').classList.remove('open');
+}
+
+function goCheckinFor(gymId){
+  closeDetail();
+  if(!currentUser){toast('Inicia sesión para hacer check-in',false);showAuth();return;}
+  showPage('checkin');
+  setTimeout(function(){
+    var sel=document.getElementById('checkinGym');
+    if(sel)sel.value=gymId;
+  },100);
+}
+
+// ===== PERFIL =====
+function renderProfile(){
+  var el=document.getElementById('profileContent');
+  if(!profile){el.innerHTML='<div class="loading">Cargando...</div>';return;}
+  var pts=profile.points||0;
+  var level=getLevel(pts);
+  var next=getNext(pts);
+  var progress=Math.min(100,Math.round(((pts-level.min)/(next.max-level.min))*100));
+  var initials=(profile.full_name||profile.username||'?').split(' ').map(function(w){return w[0];}).join('').toUpperCase().slice(0,2);
+
+  el.innerHTML=
+    '<div class="profile-hero">'+
+      '<div class="profile-av-big">'+initials+'</div>'+
+      '<div class="profile-name">'+(profile.full_name||profile.username)+'</div>'+
+      '<div class="profile-handle">@'+profile.username+(profile.city?' · '+profile.city:'')+'</div>'+
+      (profile.bio?'<div class="profile-bio">'+profile.bio+'</div>':'')+
+      '<div class="level-pill">'+level.icon+' '+level.name+' · '+pts+' pts</div>'+
+    '</div>'+
+    '<div class="prog-sec">'+
+      '<div class="prog-lbl"><span>'+level.name+'</span><span>'+pts+' / '+next.max+' pts → '+next.name+' '+next.icon+'</span></div>'+
+      '<div class="prog-bar"><div class="prog-fill" style="width:'+progress+'%"></div></div>'+
+    '</div>'+
+    '<div class="stats-row">'+
+      '<div class="stat-cell"><div class="stat-num">'+myCheckins.length+'</div><div class="stat-lbl">Check-ins</div></div>'+
+      '<div class="stat-cell"><div class="stat-num">'+pts+'</div><div class="stat-lbl">Puntos</div></div>'+
+      '<div class="stat-cell"><div class="stat-num">'+level.icon+'</div><div class="stat-lbl">'+level.name+'</div></div>'+
+    '</div>'+
+    '<div class="card"><div class="card-title">¿Cómo ganar puntos?</div>'+
+      POINTS_INFO.map(function(p){return '<div class="pts-row"><span class="pts-action">'+p.icon+' '+p.action+'</span><span class="pts-val">+'+p.pts+'</span></div>';}).join('')+
+    '</div>';
+}
+
+function loadSettings(){
+  if(!profile)return;
+  document.getElementById('editName').value=profile.full_name||'';
+  document.getElementById('editUsername').value=profile.username||'';
+  document.getElementById('editCity').value=profile.city||'';
+  document.getElementById('editBio').value=profile.bio||'';
+}
+
+document.getElementById('btnSaveProfile').addEventListener('click',function(){
+  if(!currentUser)return;
+  var wasComplete=profile&&profile.profile_completed;
+  var data={
+    full_name:document.getElementById('editName').value.trim(),
+    username:document.getElementById('editUsername').value.trim(),
+    city:document.getElementById('editCity').value.trim(),
+    bio:document.getElementById('editBio').value.trim(),
+    profile_completed:true
+  };
+  var btn=document.getElementById('btnSaveProfile');
+  btn.textContent='Guardando...';btn.disabled=true;
+  db.from('profiles').update(data).eq('id',currentUser.id).then(function(r){
+    btn.textContent='💾 Guardar perfil';btn.disabled=false;
+    if(r.error){toast('Error: '+r.error.message,false);return;}
+    Object.assign(profile,data);
+    updateAvatarBtn();
+    renderProfile();
+    if(!wasComplete){addPoints(50).then(function(){toast('¡Perfil completado! +50 puntos 🎉');renderProfile();});}
+    else toast('Perfil actualizado ✓');
+  });
+});
+
+// ===== CHECK-IN =====
+function initCheckin(){
+  ensureGymsLoaded().then(function(){
+    var sel=document.getElementById('checkinGym');
+    sel.innerHTML='<option value="">Selecciona un gimnasio...</option>'+gyms.map(function(g){return '<option value="'+g.id+'">'+(g.emoji||'🏋️')+' '+g.name+'</option>';}).join('');
+    if(!currentUser)return;
+    return db.from('checkins').select('*,gyms(name,emoji,latitude,longitude)').eq('user_id',currentUser.id).order('created_at',{ascending:false}).then(function(r){
+      myCheckins=r.data||[];
+      renderCheckinHistory();
+      renderMap();
+    });
+  });
+}
+
+document.getElementById('photoInput').addEventListener('change',function(e){
+  var file=e.target.files[0];
+  if(!file)return;
+  selectedPhotoFile=file;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var img=document.getElementById('photoPreview');
+    img.src=ev.target.result;
+    img.style.display='block';
+  };
+  reader.readAsDataURL(file);
+  document.getElementById('photoLabel').textContent='Foto seleccionada ✓';
+});
+
+function uploadPhoto(file,userId){
+  var ext=file.name.split('.').pop();
+  var path=userId+'/'+Date.now()+'.'+ext;
+  return db.storage.from('photos').upload(path,file).then(function(r){
+    if(r.error)throw r.error;
+    var pub=db.storage.from('photos').getPublicUrl(path);
+    return pub.data.publicUrl;
+  });
+}
+
+document.getElementById('btnCheckin').addEventListener('click',function(){
+  if(!currentUser){toast('Inicia sesión primero',false);showAuth();return;}
+  var gymId=document.getElementById('checkinGym').value;
+  var note=document.getElementById('checkinNote').value.trim();
+  if(!gymId){toast('Selecciona un gimnasio',false);return;}
+  var btn=document.getElementById('btnCheckin');
+  var hadPhoto=!!selectedPhotoFile;
+  btn.textContent='Registrando...';btn.disabled=true;
+
+  var photoPromise=selectedPhotoFile?uploadPhoto(selectedPhotoFile,currentUser.id):Promise.resolve(null);
+
+  photoPromise.then(function(photoUrl){
+    return db.from('checkins').insert({user_id:currentUser.id,gym_id:gymId,note:note||null,photo_url:photoUrl}).select().then(function(r){
+      if(r.error)throw r.error;
+      var actions=[addPoints(20)];
+      if(photoUrl){
+        actions.push(
+          db.from('photos').insert({user_id:currentUser.id,gym_id:gymId,url:photoUrl,caption:note||null}),
+          addPoints(15)
+        );
+      }
+      return Promise.all(actions);
+    });
+  }).then(function(){
+    btn.textContent='📍 Registrar check-in · +20 pts';btn.disabled=false;
+    document.getElementById('checkinNote').value='';
+    document.getElementById('checkinGym').value='';
+    document.getElementById('photoPreview').style.display='none';
+    document.getElementById('photoLabel').textContent='Añadir foto (opcional, +15 pts)';
+    document.getElementById('photoInput').value='';
+    selectedPhotoFile=null;
+    initCheckin();
+    toast(hadPhoto?'¡Check-in y foto registrados! 🎉':'¡Check-in registrado! +20 puntos 🎉');
+  }).catch(function(e){
+    btn.textContent='📍 Registrar check-in · +20 pts';btn.disabled=false;
+    toast('Error: '+(e.message||e),false);
+  });
+});
+
+var leafletMapInstance=null;
+var leafletMarkers=[];
+
+function renderMap(){
+  var empty=document.getElementById('mapEmpty');
+  var withCoords=myCheckins.filter(function(c){
+    return c.gyms && c.gyms.latitude && c.gyms.longitude;
+  });
+
+  if(!withCoords.length){
+    empty.style.display='flex';
+    if(leafletMapInstance){leafletMapInstance.remove();leafletMapInstance=null;}
+    return;
+  }
+  empty.style.display='none';
+
+  if(!leafletMapInstance){
+    leafletMapInstance=L.map('leafletMap',{zoomControl:false,attributionControl:false});
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(leafletMapInstance);
+    L.control.zoom({position:'bottomright'}).addTo(leafletMapInstance);
+  }
+
+  leafletMarkers.forEach(function(m){leafletMapInstance.removeLayer(m);});
+  leafletMarkers=[];
+
+  var bounds=[];
+  var seen={};
+  withCoords.forEach(function(c){
+    var lat=c.gyms.latitude, lng=c.gyms.longitude;
+    var key=lat+','+lng;
+    if(seen[key])return;
+    seen[key]=true;
+    var emoji=c.gyms.emoji||'📍';
+    var icon=L.divIcon({className:'',html:'<div class="gym-pin-emoji">'+emoji+'</div>',iconSize:[30,30],iconAnchor:[15,28]});
+    var marker=L.marker([lat,lng],{icon:icon}).addTo(leafletMapInstance);
+    marker.bindPopup('<b>'+c.gyms.name+'</b>'+(c.note?'<br>'+c.note:''));
+    leafletMarkers.push(marker);
+    bounds.push([lat,lng]);
+  });
+
+  if(bounds.length===1){
+    leafletMapInstance.setView(bounds[0],14);
+  } else if(bounds.length>1){
+    leafletMapInstance.fitBounds(bounds,{padding:[30,30]});
+  }
+
+  setTimeout(function(){if(leafletMapInstance)leafletMapInstance.invalidateSize();},100);
+}
+
+function renderCheckinHistory(){
+  var el=document.getElementById('checkinHistory');
+  if(!myCheckins.length){el.innerHTML='<div class="empty-state">¡Aún no tienes check-ins!<br>Empieza a entrenar 💪</div>';return;}
+  el.innerHTML='<div class="section-title" style="margin-top:4px">Mis últimos entrenos</div>'+
+    myCheckins.slice(0,8).map(function(c){
+      return '<div class="hist-item">'+
+        '<div class="hist-emoji">'+((c.gyms&&c.gyms.emoji)||'📍')+'</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div class="hist-name">'+((c.gyms&&c.gyms.name)||'Gimnasio')+'</div>'+
+          (c.note?'<div class="hist-note">'+c.note+'</div>':'')+
+        '</div>'+
+        '<div class="hist-date">'+new Date(c.created_at).toLocaleDateString('es-ES',{day:'numeric',month:'short'})+'</div>'+
+      '</div>';
+    }).join('');
+}
+
+// ===== COMUNIDAD (feed) =====
+function loadFeed(){
+  var el=document.getElementById('feedList');
+  db.from('photos').select('*,profiles(username,full_name,level),gyms(name,emoji)').order('created_at',{ascending:false}).limit(20).then(function(r){
+    feedPhotos=r.data||[];
+    if(!feedPhotos.length){
+      el.innerHTML='<div class="empty-state">Aún no hay fotos en la comunidad.<br>¡Sé el primero en compartir tu entreno! 📸</div>';
+      return;
+    }
+    el.innerHTML=feedPhotos.map(function(f,i){
+      var uname=(f.profiles&&f.profiles.username)||'usuario';
+      var level=(f.profiles&&f.profiles.level)||'Rookie';
+      var gymName=(f.gyms&&f.gyms.name)||'';
+      var gymEmoji=(f.gyms&&f.gyms.emoji)||'📍';
+      var initials=uname.slice(0,2).toUpperCase();
+      var liked=likedPhotos.indexOf(f.id)>-1;
+      return '<div class="feed-card">'+
+        '<div class="feed-hdr">'+
+          '<div class="feed-av">'+initials+'</div>'+
+          '<div style="flex:1">'+
+            '<div class="feed-uname">@'+uname+' <span class="feed-lvl">'+level+'</span></div>'+
+            '<div class="feed-meta">'+gymEmoji+' '+gymName+' · '+new Date(f.created_at).toLocaleDateString('es-ES',{day:'numeric',month:'short'})+'</div>'+
+          '</div>'+
+        '</div>'+
+        '<img class="feed-img" src="'+f.url+'" loading="lazy">'+
+        '<div class="feed-actions">'+
+          '<button class="act-btn'+(liked?' liked':'')+'" onclick="toggleLike(\''+f.id+'\','+(f.likes||0)+',this)"><i class="ti ti-heart"></i> <span>'+(f.likes||0)+'</span></button>'+
+          '<button class="act-btn"><i class="ti ti-message-circle"></i> Comentar</button>'+
+          '<button class="act-btn"><i class="ti ti-share"></i></button>'+
+        '</div>'+
+        (f.caption?'<div class="feed-caption"><strong>@'+uname+'</strong> '+f.caption+'</div>':'')+
+      '</div>';
+    }).join('');
+  });
+}
+
+function toggleLike(photoId,baseLikes,btn){
+  if(!currentUser){toast('Inicia sesión para dar likes',false);return;}
+  var span=btn.querySelector('span');
+  var idx=likedPhotos.indexOf(photoId);
+  if(idx>-1){
+    likedPhotos.splice(idx,1);
+    span.textContent=baseLikes;
+    btn.classList.remove('liked');
+    db.from('photos').update({likes:baseLikes}).eq('id',photoId).then(function(){});
+    db.from('likes').delete().eq('user_id',currentUser.id).eq('photo_id',photoId).then(function(){});
+  } else {
+    likedPhotos.push(photoId);
+    span.textContent=baseLikes+1;
+    btn.classList.add('liked');
+    db.from('photos').update({likes:baseLikes+1}).eq('id',photoId).then(function(){});
+    db.from('likes').insert({user_id:currentUser.id,photo_id:photoId}).then(function(){});
+  }
+}
+
+// INIT
+db.auth.getSession().then(function(r){
+  if(r.data&&r.data.session){
+    currentUser=r.data.session.user;
+    loadProfile().then(function(){showApp();});
+  } else {
+    showAuth();
+  }
+});
+</script>
+</body>
+</html>
