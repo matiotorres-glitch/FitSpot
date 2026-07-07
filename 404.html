@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Página no encontrada — FitSpot</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/icon-192.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8f8f8;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
+  .logo{font-size:22px;font-weight:800;color:#D85A30;margin-bottom:32px;letter-spacing:-.5px}
+  .emoji{font-size:72px;margin-bottom:16px;display:block}
+  .code{font-size:80px;font-weight:900;color:#D85A30;line-height:1;margin-bottom:8px}
+  h1{font-size:22px;font-weight:700;color:#1a1a1a;margin-bottom:10px}
+  p{font-size:15px;color:#888;line-height:1.6;max-width:320px;margin-bottom:32px}
+  .url-box{background:#fff;border:1px solid #eee;border-radius:10px;padding:10px 16px;font-size:13px;color:#888;margin-bottom:32px;max-width:360px;word-break:break-all}
+  .btn{display:inline-block;background:#D85A30;color:#fff;padding:14px 32px;border-radius:14px;font-size:15px;font-weight:700;text-decoration:none;margin-bottom:12px}
+  .btn-ghost{display:inline-block;color:#D85A30;font-size:14px;text-decoration:none}
+  .card{background:#fff;border-radius:20px;padding:40px 32px;max-width:420px;width:100%;box-shadow:0 4px 20px rgba(0,0,0,.06)}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">FitSpot</div>
+  <span class="emoji">🏋️</span>
+  <div class="code">404</div>
+  <h1>Página no encontrada</h1>
+  <p>La URL que buscas no existe o ha sido movida. Prueba a volver al inicio y encuentra tu próximo gimnasio.</p>
+  <div class="url-box" id="urlBox"></div>
+  <a class="btn" href="https://getfitspot.es">Volver al inicio</a><br>
+  <a class="btn-ghost" href="javascript:history.back()">← Página anterior</a>
+</div>
+
+<script>
+var SURL='https://tdybrmaekzodbfckjift.supabase.co';
+var SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkeWJybWFla3pvZGJmY2tqaWZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMDUwODIsImV4cCI6MjA5NjU4MTA4Mn0.PmwSMHvBwtbAEuOk19LG2GVNnKSrgqmGGuBiQ5kqKN0';
+var db=supabase.createClient(SURL,SKEY);
+
+var currentUrl=window.location.href;
+var referrer=document.referrer||null;
+
+// Mostrar URL en la página
+document.getElementById('urlBox').textContent=currentUrl;
+
+// Registrar el 404 en Supabase
+// Primero comprobar si ya existe esa URL para incrementar hits
+db.from('errors_404').select('id,hits').eq('url',currentUrl).then(function(r){
+  if(r.data&&r.data.length){
+    // Ya existe — incrementar hits y actualizar last_seen
+    var row=r.data[0];
+    db.from('errors_404').update({
+      hits:row.hits+1,
+      last_seen:new Date().toISOString()
+    }).eq('id',row.id).then(function(){});
+  } else {
+    // Nueva URL — insertar
+    db.from('errors_404').insert({
+      url:currentUrl,
+      referrer:referrer,
+      hits:1,
+      last_seen:new Date().toISOString()
+    }).then(function(){});
+  }
+});
+</script>
+</body>
+</html>
